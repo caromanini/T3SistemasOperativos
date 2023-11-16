@@ -1,6 +1,7 @@
 import socket
 import json
 import logging
+import time
 
 BUFFER_SIZE = 1024
 SERVER_ADDRESS = ('127.0.0.1', 12345)
@@ -47,73 +48,76 @@ def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(SERVER_ADDRESS)
 
+    username = authentication(client)
+
+    if username:
+        print("Authentication verified.")
+    else:
+        print("Authentication failed.")
+        client.close()
+    
     terminate_client = False
 
-    try:
-        while not terminate_client:
-            username = authentication(client)
+    while not terminate_client:
+        #try:
+        print("Options:")
+        print("1. Create test")
+        print("2. Take test")
+        print("3. Exit")
 
-            if username:
-                print("Authentication verified.")
-            else:
-                print("Authentication failed.")
-                client.close()
-                break
+        opciones_cliente = input("Choose option: ")
+        client.send(opciones_cliente.encode())
 
-            print("Options: ")
-            print("1. Create test")
-            print("2. Take test")
-            print("3. Exit")
+        if opciones_cliente == "1":
+            client.send("CREATE_TEST".encode())
+            create_test(client)
 
-            opciones_cliente = input("Choose option: ")
-            client.send(opciones_cliente.encode())
+        elif opciones_cliente == "2":
+            test_name = choose_test(client)
+            client.send(test_name.encode())
 
-            if opciones_cliente == "1":
-                client.send("CREATE_TEST".encode())
-                create_test(client)
+            try:
+                test_start = client.recv(1024).decode()
+                
+                if test_start == "TEST_START":
 
-            elif opciones_cliente == "2":
-                test_name = choose_test(client)
-                client.send(test_name.encode())
+                    while True:
+                        question = client.recv(1024).decode()
+                        options = client.recv(1024).decode()
 
-                try:
-                    test_start = client.recv(1024).decode()
-                    
-                    if test_start == "TEST_START":
-                        while True:
-                            question = client.recv(1024).decode()
-                            options = client.recv(1024).decode()
+                        if not question:
+                            break
 
-                            if not question:
-                                break
+                        print(f"{question}\n{options}")
 
-                            print(f"{question}\n{options}")
+                        if options == "END_OF_TEST":
+                            print("Test completed.")
+                            break
+                        elif options == "TIME_EXCEEDED":
+                            print("Time exceeded.")
+                            break
 
-                            if options == "END_OF_TEST":
-                                print("Test completed")
-                                break
-                            
-                            response = input("Your answer: ").upper()
-                            client.send(response.encode())
+                        response = input("Your answer: ").upper()
+                        client.send(response.encode())
 
-                except ConnectionAbortedError:
-                    print("Connection with the server has been terminated.")
-                    terminate_client = True
+            except ConnectionAbortedError:
+                print("Connection with the server has been terminated.")
+                terminate_client = True
 
-            elif opciones_cliente == "3":
-                client.send("EXIT_CONNECTION".encode())
-                exit = client.recv(1024).decode()
+        elif opciones_cliente == "3":
+            client.send("EXIT_CONNECTION".encode())
+            exit = client.recv(1024).decode()
 
-                if exit == "EXIT_APPROVED":
-                    terminate_client = True
+            if exit == "EXIT_APPROVED":
+                logger.info("Client terminated.") 
+                terminate_client = True
 
-            else:
-                logger.warning("Invalid option. Please enter a valid option.")
+        else:
+            logger.warning("Invalid option. Please enter a valid option.")
+            continue
 
-        logger.info("Client terminated.")  
-
-    finally:
-        client.close()
+    logger.info("Client terminated. AL FINAL")
+    client.close
 
 def create_test(client):
     test_name = input("Enter the name for the test: ")

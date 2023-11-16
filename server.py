@@ -27,7 +27,6 @@ def send_test_list(client_socket):
     else:
         client_socket.send("NO_TESTS_AVAILABLE".encode())
 
-
 def take_test(client_socket, test_name):
     try:
         test_data = load_test(test_name)
@@ -36,26 +35,14 @@ def take_test(client_socket, test_name):
             client_socket.send("NO_TEST_FOUND".encode())
             return
         
-        #time_limit = test_data.get("time_limit", 0)
-        print("PRUEBA TIEMPO: ",test_data["question1"]["time_limit"])
-
-        time_limit = test_data["question1"]["time_limit"]
         client_socket.send("TEST_START".encode())
-        start_time = time.time()
 
         score = 0
+        start_time = time.time()
+        time_aux = False
 
         for _, question_data in test_data.items():
-
-            tiempo_actual = time.time() - start_time
-
-            print("TIEMPO ACTUAL: ", time.time() - start_time)
-            print("TIME_LIMIT: ", time_limit * 60)
-
-            if tiempo_actual > time_limit * 60:
-                print("TIEMPO DENTRO DEL IF: ",time.time() - start_time)
-                break
-
+            time_limit = question_data["time_limit"] * 60
             question = question_data["question"]
             options = "\n".join(question_data["options"])
 
@@ -65,11 +52,19 @@ def take_test(client_socket, test_name):
             response = client_socket.recv(BUFFER_SIZE).decode().upper()
             correct_answer = question_data["correct_answer"]
 
+            if time.time() - start_time > time_limit:
+                print("Time exceeded.")
+                time_aux = True
+                break
+
             if response == correct_answer:
                 score += 1
 
         client_socket.send(f"Your score: {score}/{len(test_data)}".encode())
-        client_socket.send("END_OF_TEST".encode())
+        if time_aux:
+            client_socket.send("TIME_EXCEEDED".encode())
+        else:
+            client_socket.send("END_OF_TEST".encode())
 
     except Exception as e:
         logger.error(f"Error taking test: {e}")
