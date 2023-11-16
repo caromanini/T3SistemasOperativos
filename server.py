@@ -3,6 +3,7 @@ import threading
 import json
 import logging
 import os
+import time
 
 BUFFER_SIZE = 1024
 SERVER_ADDRESS = ('0.0.0.0', 12345)
@@ -34,12 +35,27 @@ def take_test(client_socket, test_name):
         if test_data is None:
             client_socket.send("NO_TEST_FOUND".encode())
             return
+        
+        #time_limit = test_data.get("time_limit", 0)
+        print("PRUEBA TIEMPO: ",test_data["question1"]["time_limit"])
 
+        time_limit = test_data["question1"]["time_limit"]
         client_socket.send("TEST_START".encode())
+        start_time = time.time()
 
         score = 0
 
         for _, question_data in test_data.items():
+
+            tiempo_actual = time.time() - start_time
+
+            print("TIEMPO ACTUAL: ", time.time() - start_time)
+            print("TIME_LIMIT: ", time_limit * 60)
+
+            if tiempo_actual > time_limit * 60:
+                print("TIEMPO DENTRO DEL IF: ",time.time() - start_time)
+                break
+
             question = question_data["question"]
             options = "\n".join(question_data["options"])
 
@@ -60,14 +76,6 @@ def take_test(client_socket, test_name):
 
 def handle_client(client_socket, lock):
     try:
-        username = client_socket.recv(BUFFER_SIZE).decode()
-
-        if "@miuandes.cl" in username:  # AUTENTICAR USUARIO
-            client_socket.send("AUTHENTICATION_VERIFIED".encode())
-        else:
-            logger.warning("Invalid username format. Closing connection.")
-            return
-
         respuesta_cliente = client_socket.recv(BUFFER_SIZE).decode()
 
         if respuesta_cliente == "1":
@@ -86,8 +94,9 @@ def handle_client(client_socket, lock):
             else:
                 client_socket.send("INVALID_TEST_CHOICE".encode())
 
-        elif respuesta_cliente == "FINISH":
+        elif respuesta_cliente == "3":
             logger.info("Terminating connection.")
+            client_socket.send("EXIT_APPROVED".encode())
         else:
             logger.warning("Invalid client response.")
         
@@ -100,6 +109,7 @@ def handle_client(client_socket, lock):
 def create_test(client_socket, lock):
     try:
         test_name = client_socket.recv(BUFFER_SIZE).decode()
+        time_limit = int(client_socket.recv(BUFFER_SIZE).decode())
         test_data = {}
 
         while True:

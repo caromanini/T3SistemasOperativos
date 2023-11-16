@@ -34,6 +34,14 @@ def choose_test(client):
         except ValueError:
             print("Invalid input. Please enter a number.")
 
+def authentication(client):
+    while True:
+        username = input("Enter username (@miuandes.cl): ")
+
+        if "@miuandes.cl" in username:
+            return username
+        else:
+            print("Please enter a valid username (@miuandes.cl)")
 
 def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -43,19 +51,19 @@ def start_client():
 
     try:
         while not terminate_client:
-            username = input("Enter username (@miuandes.cl): ")
-            client.send(username.encode())
+            username = authentication(client)
 
-            username_check = client.recv(BUFFER_SIZE).decode()
-
-            if username_check != "AUTHENTICATION_VERIFIED":
-                logger.warning("Authentication failed.")
+            if username:
+                print("Authentication verified.")
+            else:
+                print("Authentication failed.")
                 client.close()
                 break
 
             print("Options: ")
             print("1. Create test")
             print("2. Take test")
+            print("3. Exit")
 
             opciones_cliente = input("Choose option: ")
             client.send(opciones_cliente.encode())
@@ -92,6 +100,13 @@ def start_client():
                     print("Connection with the server has been terminated.")
                     terminate_client = True
 
+            elif opciones_cliente == "3":
+                client.send("EXIT_CONNECTION".encode())
+                exit = client.recv(1024).decode()
+
+                if exit == "EXIT_APPROVED":
+                    terminate_client = True
+
             else:
                 logger.warning("Invalid option. Please enter a valid option.")
 
@@ -104,6 +119,9 @@ def create_test(client):
     test_name = input("Enter the name for the test: ")
     client.send(test_name.encode())
 
+    time_limit = int(input("Enter the time limit, in minutes, for the test: "))
+    client.send(str(time_limit).encode())
+
     num_questions = int(input("Enter the number of questions for the test: "))
     for i in range(1, num_questions + 1):
         question = input(f"Enter the question for question {i}: ")
@@ -113,7 +131,8 @@ def create_test(client):
         question_data = {
             "question": question,
             "options": options,
-            "correct_answer": correct_answer
+            "correct_answer": correct_answer,
+            "time_limit": time_limit
         }
 
         client.send(json.dumps(question_data).encode())
@@ -125,7 +144,7 @@ def create_test(client):
 
     client.send("END_OF_TEST_CREATION".encode())
 
-    print("Test created successfully")
+    logger.info("Test created successfully")
 
 if __name__ == "__main__":
     start_client()
