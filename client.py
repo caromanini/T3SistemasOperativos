@@ -78,7 +78,7 @@ def start_client():
                 test_start = client.recv(1024).decode()
                 
                 if test_start == "TEST_START":
-
+                    i=1
                     while True:
                         question = client.recv(1024).decode()
 
@@ -96,10 +96,12 @@ def start_client():
                             break
 
                         print(f"{remaining_time}")
-                        print(f"{question}\n{options}")
+                        print(f"{i}. {question}\n{options}")
 
                         response = input("Your answer: ").upper()
                         client.send(response.encode())
+
+                        i+=1
 
                     score = client.recv(1024).decode()
                     print(score)
