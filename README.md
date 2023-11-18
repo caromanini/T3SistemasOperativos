@@ -42,6 +42,7 @@ Enter option A for question 1: <A. opcion 1>
   
     - Antes de cada pregunta, se presentará el tiempo restante para responder la prueba completa. 
     - Una vez que se responde una pregunta, no se puede volver atrás.
+    - El puntaje total será mostrado una vez que la prueba se termine. 
 
 ```
 Ejemplo de formato de pregunta: 
