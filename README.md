@@ -38,7 +38,7 @@ Ejemplo:
 Enter option A for question 1: <A. opcion 1>
 ```
 
-2. __Take test__: Muestra las pruebas disponibles. Para comenzar una de estas, hay que ingresar el número que le corresponde (1, 2, 3, etc.)
+2. __Take test__: Muestra y deja escoger una de las pruebas disponibles. Para comenzar una de estas, hay que ingresar el número que le corresponde (1, 2, 3, etc.)
   
     - Antes de cada pregunta, se presentará el tiempo restante para responder la prueba completa. 
     - Una vez que se responde una pregunta, no se puede volver atrás.
