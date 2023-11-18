@@ -4,9 +4,10 @@ import json
 import logging
 import os
 import time
+import datetime
 
 BUFFER_SIZE = 1024
-SERVER_ADDRESS = ('0.0.0.0', 12345)
+SERVER_ADDRESS = ('127.0.0.1', 12345)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,59 +42,68 @@ def take_test(client_socket, test_name):
         start_time = time.time()
         time_aux = False
 
+        time_limit = test_data["question1"]["time_limit"] * 60
+        time_left = int(time_limit - (time.time() - start_time))
+
         for _, question_data in test_data.items():
-            time_limit = question_data["time_limit"] * 60
             question = question_data["question"]
             options = "\n".join(question_data["options"])
 
             client_socket.send(question.encode())
             client_socket.send(options.encode())
 
-            response = client_socket.recv(BUFFER_SIZE).decode().upper()
-            correct_answer = question_data["correct_answer"]
+            time_left = time_limit - (time.time() - start_time)
+            client_socket.send(f"Time remaining: {str(datetime.timedelta(seconds=int(time_left)))}".encode())
 
-            if time.time() - start_time > time_limit:
+            response = client_socket.recv(BUFFER_SIZE).decode().upper()
+            time_left = time_limit - (time.time() - start_time)
+
+            if time_left <= 0:
                 print("Time exceeded.")
                 time_aux = True
+                client_socket.send("TIME_EXCEEDED".encode())
                 break
 
-            if response == correct_answer:
+            if response == question_data["correct_answer"]:
                 score += 1
 
-        client_socket.send(f"Your score: {score}/{len(test_data)}".encode())
         if time_aux:
             client_socket.send("TIME_EXCEEDED".encode())
         else:
             client_socket.send("END_OF_TEST".encode())
+
+        client_socket.send(f"\nYour score: {score}/{len(test_data)}".encode())
 
     except Exception as e:
         logger.error(f"Error taking test: {e}")
 
 def handle_client(client_socket, lock):
     try:
-        respuesta_cliente = client_socket.recv(BUFFER_SIZE).decode()
+        while True:
+            respuesta_cliente = client_socket.recv(BUFFER_SIZE).decode()
 
-        if respuesta_cliente == "1":
-            prueba = client_socket.recv(BUFFER_SIZE).decode()
+            if respuesta_cliente == "1":
+                prueba = client_socket.recv(BUFFER_SIZE).decode()
 
-            if prueba == "CREATE_TEST":
-                create_test(client_socket, lock)
+                if prueba == "CREATE_TEST":
+                    create_test(client_socket, lock)
 
-        elif respuesta_cliente == "2":
-            send_test_list(client_socket)
-            aux = client_socket.recv(BUFFER_SIZE).decode()
-            test_choice = client_socket.recv(BUFFER_SIZE).decode()
+            elif respuesta_cliente == "2":
+                send_test_list(client_socket)
+                aux = client_socket.recv(BUFFER_SIZE).decode()
+                test_choice = client_socket.recv(BUFFER_SIZE).decode()
 
-            if test_choice in list_tests():
-                take_test(client_socket, test_choice)
+                if test_choice in list_tests():
+                    take_test(client_socket, test_choice)
+                else:
+                    client_socket.send("INVALID_TEST_CHOICE".encode())
+
+            elif respuesta_cliente == "3":
+                logger.info("Terminating connection.")
+                client_socket.send("EXIT_APPROVED".encode())
+                break
             else:
-                client_socket.send("INVALID_TEST_CHOICE".encode())
-
-        elif respuesta_cliente == "3":
-            logger.info("Terminating connection.")
-            client_socket.send("EXIT_APPROVED".encode())
-        else:
-            logger.warning("Invalid client response.")
+                logger.warning("Invalid client response.")
         
     except Exception as e:
         logger.error(f"Error handling client: {e}")

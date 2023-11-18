@@ -1,7 +1,6 @@
 import socket
 import json
 import logging
-import time
 
 BUFFER_SIZE = 1024
 SERVER_ADDRESS = ('127.0.0.1', 12345)
@@ -59,7 +58,6 @@ def start_client():
     terminate_client = False
 
     while not terminate_client:
-        #try:
         print("Options:")
         print("1. Create test")
         print("2. Take test")
@@ -83,22 +81,28 @@ def start_client():
 
                     while True:
                         question = client.recv(1024).decode()
+
+                        if question == "END_OF_TEST":
+                            print("Test completed.")
+                            break
+                        elif question == "TIME_EXCEEDED":
+                            print("Time exceeded.")
+                            break
+
                         options = client.recv(1024).decode()
+                        remaining_time = client.recv(1024).decode()
 
                         if not question:
                             break
 
+                        print(f"{remaining_time}")
                         print(f"{question}\n{options}")
-
-                        if options == "END_OF_TEST":
-                            print("Test completed.")
-                            break
-                        elif options == "TIME_EXCEEDED":
-                            print("Time exceeded.")
-                            break
 
                         response = input("Your answer: ").upper()
                         client.send(response.encode())
+
+                    score = client.recv(1024).decode()
+                    print(score)
 
             except ConnectionAbortedError:
                 print("Connection with the server has been terminated.")
@@ -109,15 +113,14 @@ def start_client():
             exit = client.recv(1024).decode()
 
             if exit == "EXIT_APPROVED":
-                logger.info("Client terminated.") 
                 terminate_client = True
 
         else:
             logger.warning("Invalid option. Please enter a valid option.")
             continue
 
-    logger.info("Client terminated. AL FINAL")
-    client.close
+    logger.info("Client terminated.")
+    client.close()
 
 def create_test(client):
     test_name = input("Enter the name for the test: ")
